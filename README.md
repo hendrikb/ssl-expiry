@@ -5,6 +5,8 @@ ssl-expiry helps you to track expiration dates of your SSL certificates
 
 This tool has been developed and tested on Arch Linux. It is written entirely in bash and relies on fairly recent versions of the shell, openssl and [bc](https://www.gnu.org/software/bc/bc.html), sed and grep. In general, it might not work out of the box on operating systems other than GNU Linux.
 
+It will work without *bc* being installed. The third column with remaining days (default) or hours (`-H` or `--hours` parameter) is omitted then. On most Debian based distributions, you can install it easily with `sudo apt-get install bc` though. 
+
 ## Installation
 
 Just clone this repository and run `ssl-expiry -h`. Optionally, you can use `make install` (which might need root privileges or `sudo`) to install the tool to `/usr/local/bin`. 
@@ -70,7 +72,7 @@ yahoo.com:443;Oct 30 23:59:59 2017 GMT;337 days left
 microsoft.com:443;Apr 12 00:29:36 2018 GMT;500 days left
 ```
 
-Remember that you can always make use of the pipeline and combine ssl-expiry with other fine tools like `awk`, `cut`, `sort`, `uniq` or `sed`, especially when working with huge domain listings using the `@/spath/to/my_domain_list` notation.
+Remember that you can always make use of the pipeline and combine ssl-expiry with other fine tools like `awk`, `cut`, `sort`, `uniq` or `sed`, especially when working with huge domain listings using the `@/spath/to/my_domain_list` notation. Please note this will only work if *bc* is installed. See the Requirements section of this README.
 
 ## Legal
 
