@@ -1,0 +1,97 @@
+#!/bin/bash
+
+function usage {
+  echo "Description: ssl-expiry helps you to track expiration dates of your SSL certificates" 
+  echo "Usage: ssl-expiry [options] <HOST LIST>" 
+  echo
+  echo "Options: -s|--separator=';'  Defines the symbol(s) that separate the result table cells"
+  echo '         -l|--limit=FALSE    Defines a GNU date like duration limit up to which you want'
+  echo '                             to see results. Useful for limiting output to soon expiring'
+  echo '                             certifcates. Try: --limit="10 days" See: man 1 date'
+  echo '         -H|--hours          Shows expiration hint in hours, if ommitted, it will be days'
+  echo '         -h|--help           Shows this text and exits'
+  echo
+  echo 'HOST LIST is a space separated list of the following notations in arbitrary combinations:'
+  echo 'some.example.com             asks some.example.com for a certificate on port 443 (https)'
+  echo 'some.example.com:465         asks some.example.com for a certificate on port 465 (smtps)'
+  echo '@/some/file/path             open a file from the given path reading its entries one entry'
+  echo '                             per line. Supported formats are like the two mentioned above.'
+  echo
+  echo 'Example with advanced sorting using pipe:'
+  echo "   ssl-expiry google.com yahoo.com microsoft.com | sort -t';' -k3 -n"
+  echo 'Written by Hendrik Bergunde <hbergunde@gmx.de> in 2016. Tested on Arch Linux.' 
+  echo 'More info: http://github.com/hendrikb/ssl-expiry' 
+}
+
+TEMP=`getopt -o s:l:Hh --long separator:,limit:,hours,help -n 'ssl-expiry' -- "$@"`
+if [ ${#@} -eq 0 ] ; then echo Fatal: please provide at least one host >&2 ; usage >&2 ; exit 1 ; fi
+
+if [ $? != 0 ] ; then usage >&2 ; exit 1 ; fi
+eval set -- "$TEMP"
+
+SEP=';'
+LIMIT=false
+HOURS=false
+while true; do
+  case "$1" in
+    -s | --separator ) SEP="$2"; shift 2 ;;
+    -l | --limit) LIMIT="$2"; shift 2 ;;
+    -H | --hours) HOURS=true; shift 1 ;;
+    -h | --help) usage; exit 0 ;;
+    -- ) shift; break ;;
+    * ) break ;;
+  esac
+done
+
+if [ "$LIMIT" != false ] ; then
+  expiry=$(date -d "$LIMIT" +%s)
+  if [ ! $? -eq 0 ] ; then usage ; fi
+fi
+
+params="$@"
+if [ -z "$params" ] ; then
+  echo Fatal: please provide at least one host >&2 ; usage >&2
+  exit 
+fi
+
+entries=""
+
+for param in $params ; do
+  if [[ $param == @* ]] ; then
+    file_name=$(echo $param  | sed -e 's/^@//')
+    entries="$entries $(sed -e ':a;N;$!ba;s/\n/ /g' $file_name)"
+    if [ ! $? -eq 0 ] || [ ! -r $file_name ]; then
+      echo Please provide a @filer_ name or the FQDNs directly >&2
+      exit 1
+    fi
+  else
+    entries="$entries $param"
+  fi
+done
+
+for entry in $entries ; do
+  host=$(echo $entry | cut -f1 -d:)
+  echo $entry | grep -q ':'
+  if [ $? -eq 0 ] ; then
+    port=$(echo $entry | cut -f2 -d:)
+  else
+    port=443
+  fi
+  not_after=$(echo | openssl s_client -showcerts -servername $host -connect $host:$port 2>/dev/null | openssl x509 -inform pem -noout -text | grep 'Not After')
+  if [ $? -eq 0 ] ; then
+    ts=$( echo $not_after | cut -f2- -d: | sed -e 's/^ \+//g' )
+    ts_s=$(date --date="$ts" +%s)
+    if [ $HOURS == true ] ; then
+      whats_left="$(echo "($ts_s - $(date +%s))/60/60" | bc) hours"
+    else
+      whats_left="$(echo "($ts_s - $(date +%s))/60/60/24" | bc) days"
+    fi
+    expired=$(echo "$expiry - $ts_s" | bc)
+    if [ $expired -ge 0 ] || [ "$LIMIT" == false ] ; then
+      echo $host:$port$SEP$ts$SEP$whats_left left
+    fi
+  else
+    echo Fatal: Failed to fetch certs for $entry 1>&2
+    exit 2
+  fi
+done
