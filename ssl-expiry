@@ -8,7 +8,11 @@ function usage {
   echo '         -l|--limit=FALSE    Defines a GNU date like duration limit up to which you want'
   echo '                             to see results. Useful for limiting output to soon expiring'
   echo '                             certifcates. Try: --limit="10 days" See: man 1 date'
-  echo '         -H|--hours          Shows expiration hint in hours, if ommitted, it will be days'
+  if $NO_BC ; then
+    echo '         -H|--hours          OMITTED: please install "bc" (apt-get?) to enable this option'
+  else
+    echo '         -H|--hours          Shows expiration hint in hours, if ommitted, it will be days'
+  fi
   echo '         -h|--help           Shows this text and exits'
   echo
   echo 'HOST LIST is a space separated list of the following notations in arbitrary combinations:'
@@ -17,7 +21,7 @@ function usage {
   echo '@/some/file/path             open a file from the given path reading its entries one entry'
   echo '                             per line. Supported formats are like the two mentioned above.'
   echo
-  echo 'Example with advanced sorting using pipe:'
+  echo 'Example with advanced sorting using pipe (needs "bc" installed):'
   echo "   ssl-expiry google.com yahoo.com microsoft.com | sort -t';' -k3 -n"
   echo 'Written by Hendrik Bergunde <hbergunde@gmx.de> in 2016. Tested on Arch Linux.' 
   echo 'More info: http://github.com/hendrikb/ssl-expiry' 
@@ -28,6 +32,11 @@ if [ ${#@} -eq 0 ] ; then echo Fatal: please provide at least one host >&2 ; usa
 
 if [ $? != 0 ] ; then usage >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
+
+NO_BC=false
+if ! (echo 0+0 | bc -q 1>/dev/null 2>/dev/null) ; then
+  NO_BC=true
+fi
 
 SEP=';'
 LIMIT=false
@@ -80,15 +89,19 @@ for entry in $entries ; do
   not_after=$(echo | openssl s_client -showcerts -servername $host -connect $host:$port 2>/dev/null | openssl x509 -inform pem -noout -text | grep 'Not After')
   if [ $? -eq 0 ] ; then
     ts=$( echo $not_after | cut -f2- -d: | sed -e 's/^ \+//g' )
-    ts_s=$(date --date="$ts" +%s)
-    if [ $HOURS == true ] ; then
-      whats_left="$(echo "($ts_s - $(date +%s))/60/60" | bc) hours"
+    if $NO_BC ; then
+        echo $host:$port$SEP$ts
     else
-      whats_left="$(echo "($ts_s - $(date +%s))/60/60/24" | bc) days"
-    fi
-    expired=$(echo "$expiry - $ts_s" | bc)
-    if [ $expired -ge 0 ] || [ "$LIMIT" == false ] ; then
-      echo $host:$port$SEP$ts$SEP$whats_left left
+      ts_s=$(date --date="$ts" +%s)
+      if [ $HOURS == true ] ; then
+        whats_left="$(echo "($ts_s - $(date +%s))/60/60" | bc) hours"
+      else
+        whats_left="$(echo "($ts_s - $(date +%s))/60/60/24" | bc) days"
+      fi
+      expired=$(echo "$expiry - $ts_s" | bc)
+      if [ $expired -ge 0 ] || [ "$LIMIT" == false ] ; then
+        echo $host:$port$SEP$ts$SEP$whats_left left
+      fi
     fi
   else
     echo Fatal: Failed to fetch certs for $entry 1>&2
