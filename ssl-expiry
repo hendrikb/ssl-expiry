@@ -86,7 +86,7 @@ for entry in $entries ; do
   else
     port=443
   fi
-  not_after=$(echo | openssl s_client -showcerts -servername $host -connect $host:$port 2>/dev/null | openssl x509 -inform pem -noout -text | grep 'Not After')
+  not_after=$(echo | openssl s_client -showcerts -servername $host -connect $host:$port 2>/dev/null | openssl x509 -inform pem -noout -text 2>/dev/null | grep 'Not After')
   if [ $? -eq 0 ] ; then
     ts=$( echo $not_after | cut -f2- -d: | sed -e 's/^ \+//g' )
     if $NO_BC ; then
