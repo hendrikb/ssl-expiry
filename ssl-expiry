@@ -1,5 +1,12 @@
 #!/bin/bash
 
+VERSION="1.0.0"
+
+function version {
+  echo "ssl-expiry ($VERSION) (C) 2017 Hendrik Bergunde <hbergunde@gmx.de>"
+  echo "More Info: http://github.com/hendrikb/ssl-expiry - Developed & Tested on Arch Linux"
+}
+
 function usage {
   echo "Description: ssl-expiry helps you to track expiration dates of your SSL certificates" 
   echo "Usage: ssl-expiry [options] <HOST LIST>" 
@@ -14,6 +21,7 @@ function usage {
     echo '         -H|--hours          Shows expiration hint in hours, if ommitted, it will be days'
   fi
   echo '         -h|--help           Shows this text and exits'
+  echo "         -v|--version        Shows this application's version"
   echo
   echo 'HOST LIST is a space separated list of the following notations in arbitrary combinations:'
   echo 'some.example.com             asks some.example.com for a certificate on port 443 (https)'
@@ -23,11 +31,11 @@ function usage {
   echo
   echo 'Example with advanced sorting using pipe (needs "bc" installed):'
   echo "   ssl-expiry google.com yahoo.com microsoft.com | sort -t';' -k3 -n"
-  echo 'Written by Hendrik Bergunde <hbergunde@gmx.de> in 2016. Tested on Arch Linux.' 
-  echo 'More info: http://github.com/hendrikb/ssl-expiry' 
+  echo
+  version
 }
 
-TEMP=`getopt -o s:l:Hh --long separator:,limit:,hours,help -n 'ssl-expiry' -- "$@"`
+TEMP=`getopt -o s:l:Hhv --long separator:,limit:,hours,help,version -n 'ssl-expiry' -- "$@"`
 if [ ${#@} -eq 0 ] ; then echo Fatal: please provide at least one host >&2 ; usage >&2 ; exit 1 ; fi
 
 if [ $? != 0 ] ; then usage >&2 ; exit 1 ; fi
@@ -47,6 +55,7 @@ while true; do
     -l | --limit) LIMIT="$2"; shift 2 ;;
     -H | --hours) HOURS=true; shift 1 ;;
     -h | --help) usage; exit 0 ;;
+    -v | --version) version ; exit 0 ;;
     -- ) shift; break ;;
     * ) break ;;
   esac
