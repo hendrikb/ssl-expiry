@@ -105,6 +105,5 @@ for entry in $entries ; do
     fi
   else
     echo Fatal: Failed to fetch certs for $entry 1>&2
-    exit 2
   fi
 done
