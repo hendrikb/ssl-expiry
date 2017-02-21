@@ -79,7 +79,7 @@ for param in $params ; do
     file_name=$(echo $param  | sed -e 's/^@//')
     entries="$entries $(sed -e ':a;N;$!ba;s/\n/ /g' $file_name)"
     if [ ! $? -eq 0 ] || [ ! -r $file_name ]; then
-      echo Please provide a @filer_ name or the FQDNs directly >&2
+      echo Please provide a @file_name or the FQDNs directly >&2
       exit 1
     fi
   else
